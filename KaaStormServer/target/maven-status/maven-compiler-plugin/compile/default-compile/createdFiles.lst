@@ -1,0 +1,13 @@
+org\kaaproject\examples\storm\storm\server\producer\SimpleAvroTupleProducer.class
+org\kaaproject\examples\storm\storm\server\spout\FlumeSourceSpout.class
+org\kaaproject\examples\storm\storm\server\bolt\recordBolt.class
+org\kaaproject\examples\storm\storm\server\producer\AvroFlumeEventProducer.class
+org\kaaproject\examples\storm\storm\server\common\StormEmbeddedAgentConfiguration.class
+org\kaaproject\examples\storm\storm\server\common\Constants.class
+org\kaaproject\examples\storm\storm\server\common\MemoryConfigurationProvider.class
+org\kaaproject\examples\storm\storm\server\producer\AvroTupleProducer.class
+org\kaaproject\examples\storm\storm\server\common\MaterializedConfigurationProvider.class
+org\kaaproject\examples\storm\storm\server\bolt\AvroSinkBolt.class
+org\kaaproject\examples\storm\storm\server\producer\SimpleAvroFlumeEventProducer.class
+org\kaaproject\examples\storm\storm\server\bolt\Algorithm.class
+org\kaaproject\examples\storm\storm\server\Main.class
