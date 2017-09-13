@@ -36,6 +36,7 @@ import backtype.storm.tuple.ITuple;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.utils.TupleUtils;
 import project.selfserv.kaa.sensors.data.acceletometer.acceleroMetersensor;
+import project.selfserv.storage.mongodb.AbstractMongoBolt;
 import project.selfserv.storage.mongodb.MongoDbManager;
 import project.selfserv.storage.mongodb.MongoMapper;
 

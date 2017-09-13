@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.kaaproject.examples.storm.storm.server.bolt;
+package project.selfserv.storage.mongodb;
 
 import java.util.Map;
 

@@ -20,6 +20,8 @@ public class MongoDbManager {
     private MongoDatabase database;
     private static final Logger logger = LogManager.getLogger(MongoDbManager.class);
     
+    public static MongoDbManager MongoDbManagerInstance = new MongoDbManager();
+    
     public MongoClient getMongo() {
 		return mongo;
 	}

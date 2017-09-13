@@ -14,6 +14,8 @@ import project.selfserv.kaa.event.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import project.selfserv.configuration.ConfigManager;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,17 +25,21 @@ import java.util.concurrent.CountDownLatch;
 public class EventsManager {
 
     private static final Logger LOG = LoggerFactory.getLogger(AvroSinkBolt.class);
-    private static final String KEYS_DIR = "keys_for_selfserv";
+    private static  String KEYS_DIR ;
     //Credentials for attaching an endpoint to the user.
-    private static final String USER_EXTERNAL_ID = "trustfull_User_any";
-    private static final String USER_ACCESS_TOKEN = "14940577420335682368";
+    private static  String USER_EXTERNAL_ID ;
+    private static  String USER_ACCESS_TOKEN ;
 
     private KaaClient kaaClient;
     private SelfServEventClassFamilly SamplingEventFamily;
 
+    public static EventsManager EventsManagerInstance = new EventsManager();
+    
 	public EventsManager() {
 		// TODO Auto-generated constructor stub
-		
+		KEYS_DIR 		  = ConfigManager.ConfigManagerInstance.getKEYS_DIR();
+		USER_ACCESS_TOKEN = ConfigManager.ConfigManagerInstance.getUSER_ACCESS_TOKEN();
+		USER_EXTERNAL_ID  = ConfigManager.ConfigManagerInstance.getUSER_EXTERNAL_ID();
 		
 	}
     /**

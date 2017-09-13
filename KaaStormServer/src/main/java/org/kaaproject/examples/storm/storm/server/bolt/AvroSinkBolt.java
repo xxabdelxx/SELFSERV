@@ -16,6 +16,8 @@ import project.selfserv.events.EventsManager;
 import project.selfserv.kaa.sensors.data.sensorsDataCollection;
 import project.selfserv.kaa.sensors.data.acceletometer.acceleroMetersensor;
 import project.selfserv.kaa.sensors.data.samples.samples;
+import project.selfserv.storage.mongodb.MongoDbManager;
+
 import org.kaaproject.kaa.client.event.FindEventListenersCallback;
 
 import org.kaaproject.kaa.server.common.log.shared.KaaFlumeEventReader;
@@ -92,15 +94,17 @@ public class AvroSinkBolt implements IRichBolt {
 			  float zAxis = acceleroMetersensor_Value.getZAxis();
 			  float galvanicSkinRespsensor_Value = SensorsData.get(0).getGalvanicSkinRespsensor();
 			  
-              LOG.info("------------------Sensors Data--------------------------------");
+			  
+			  
+              LOG.info("------------------SINK : Sensors Data--------------------------------");
               LOG.info("CGM_Value : "+CGM_Value);
               LOG.info("HeartRatesensor_Value : "+HeartRatesensor_Value);
               LOG.info("bodyTemperaturesensor_Value : "+bodyTemperaturesensor_Value);
               LOG.info("acceleroMetersensor (x,y,z) : ("+xAxis+","+yAxis+","+zAxis+")");
               LOG.info("galvanicSkinRespsensor_Value : "+galvanicSkinRespsensor_Value);
               
-              LOG.info("========================================================>Sending to recordBolt");
-			  //send to recordBolt
+              LOG.info("#########  Sending to Bolts #######");
+			  //send to Bolts
               this.collector.emit(new Values(
 	            		                         report.getTimestamp(),
 	            		                         CGM_Value,
@@ -110,6 +114,7 @@ public class AvroSinkBolt implements IRichBolt {
 	            		                         galvanicSkinRespsensor_Value
             		              			)
             		  			  );
+              //EventsManager.EventsManagerInstance.sendEvent(39, 50);
             }
             LOG.info("========================================================>sent to recordBolt");
             //All seems to be nice, notify storm.spout about it

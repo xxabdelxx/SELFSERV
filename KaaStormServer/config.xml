@@ -1,0 +1,24 @@
+<?xml version = "1.0"?>
+<configuration>
+   <kaaconfig>
+      <USER_ACCESS_TOKEN>14940577420335682368</USER_ACCESS_TOKEN>
+      <USER_EXTERNAL_ID>trustfull_User_any</USER_EXTERNAL_ID>
+      <KEYS_DIR>keys_for_selfserv</KEYS_DIR>
+   </kaaconfig>
+   
+   <mongoconfig>
+      <url>mongodb://192.168.100.210:27017/selfservdb</url>
+      <collectionName>Monitoring</collectionName>
+   </mongoconfig>
+
+   <algorithmconfig>
+      <SAMPLINGFREQUENCY>300</SAMPLINGFREQUENCY>
+      <ALPHA_MAX_ANGLE>-1.0</ALPHA_MAX_ANGLE>
+      <MIN_GlUCOMETER_THRESHOLD>70.0</MIN_GlUCOMETER_THRESHOLD>
+      <MAX_CGM>0</MAX_CGM>
+      <MAX_HEARTRATE>0</MAX_HEARTRATE>
+      <MAX_TEMPERATURE>0</MAX_TEMPERATURE>
+      <MAX_ACCELEROMETER>0</MAX_ACCELEROMETER>
+      <MAX_GSR>0</MAX_GSR>
+   </algorithmconfig>
+</configuration>
