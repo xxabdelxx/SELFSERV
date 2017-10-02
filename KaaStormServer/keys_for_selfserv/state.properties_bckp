@@ -1,4 +1,4 @@
-#Sat Aug 19 19:30:18 CEST 2017
+#Thu Sep 28 15:12:47 CEST 2017
 ENDPOINT_TOKEN=027a9002-3f87-4478-9c66-231abe295e18
 attached_eps=
 PROFILE_HASH=2jmj7l5rSw0yVb/vlWAYkK/YBwk\=
@@ -6,5 +6,6 @@ topic.list=
 is_registered=true
 need.profile.resync=false
 nf_subscriptions=rO0ABXNyABFqYXZhLnV0aWwuSGFzaE1hcAUH2sHDFmDRAwACRgAKbG9hZEZhY3RvckkACXRocmVzaG9sZHhwP0AAAAAAAAB3CAAAABAAAAAAeA\=\=
-properties.hash=gPTvWNSozPsDqDYeauVqiTmwy1Q\=
+is_attached=true
+properties.hash=RbOWtfnQte9eE6gF8IeM9OibKKc\=
 event.seq.num=0

@@ -41,7 +41,7 @@ import project.selfserv.storage.mongodb.*;
 
 public class Main implements Serializable{
 	
-	public static String url;//"mongodb://selfservteam:selfserv123@192.168.100.210/selfservdb";
+	public static String url;
 	public static String collectionName;
 
     public static void main(String[] args) throws Throwable
@@ -52,21 +52,14 @@ public class Main implements Serializable{
         
         url 		   = ConfigManager.ConfigManagerInstance.getUrl();
 		collectionName = ConfigManager.ConfigManagerInstance.getCollectionName();
-        
-        //connect to the storage unit
-        if(!MongoDbManager.MongoDbManagerInstance.startMongoDb())
-        {
-        	LOG.error("############### STORAGE UNIT : ERROR ############");
-        	return;
-        }
-        LOG.info("############### STORAGE UNIT : OK ############");
-        LOG.info("############### STARTING EVENTS ############");
+
+        LOG.info("### DEBUG ### ##KAA## -> STARTING EVENTS... ##");
     	if(!EventsManager.EventsManagerInstance.start())
     	{
-	    	LOG.error("############### EVENTS : ERROR       ############");
+	    	LOG.error("### DEBUG ### ##KAA##  -> EVENTS : ERROR ##");
 	    	return;
     	}
-		LOG.info("############### EVENTS : OK            ############");
+    	LOG.info("### DEBUG ### ##KAA##  -> EVENTS : OK ##");
 		
         Properties props = new Properties();
         props.load(Main.class.getResourceAsStream("/storm.properties"));
@@ -96,8 +89,9 @@ public class Main implements Serializable{
         MongoInsertBolt insertBolt = new MongoInsertBolt(url, collectionName,mapper);
         builder.setBolt("MongoInsertBolt",insertBolt,2).shuffleGrouping("AvroSinkBolt");
         
-        Algorithm algorithm=new Algorithm();
-        builder.setBolt("Algorithm", algorithm,2).shuffleGrouping("AvroSinkBolt");
+        
+        //Algorithm algorithm=new Algorithm(); changed to static
+        builder.setBolt("Algorithm",Algorithm.AlgorithmInstance,2).shuffleGrouping("AvroSinkBolt");
         
         //Default configuration
         Config config = new Config(); 
@@ -107,8 +101,21 @@ public class Main implements Serializable{
         cluster.submitTopology("T1", config, builder.createTopology());
         LOG.info("Topology running...");
         
+        if(! insertBolt.isConnected()) 
+        {
+        	LOG.error("### DEBUG ### ##DB## -> ERROR CONNECTING TO STORAGE UNIT ##");
+            cluster.shutdown();
+            EventsManager.EventsManagerInstance.stop();
+            LOG.info("### DEBUG ### ##KAA CLUSTER## -> SERVICE STOPED SUCCESSEFLY ##");
+        	System.exit(-1);
+        }
+        
         //Wait for any input and kill topology
-       // System.in.read();
-       // cluster.shutdown();
+        System.in.read();
+        cluster.shutdown();
+        EventsManager.EventsManagerInstance.stop();
+        LOG.info("### DEBUG ### ##KAA CLUSTER## -> SERVICE STOPED SUCCESSEFLY ##");
+        
+        
     }
 }

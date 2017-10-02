@@ -28,6 +28,8 @@ import org.apache.logging.log4j.Logger;
 import org.bson.Document;
 import org.kaaproject.examples.storm.storm.server.common.BatchHelper;
 
+import com.mongodb.MongoClient;
+
 import backtype.storm.task.OutputCollector;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.OutputFieldsDeclarer;
@@ -37,7 +39,6 @@ import backtype.storm.tuple.Tuple;
 import backtype.storm.utils.TupleUtils;
 import project.selfserv.kaa.sensors.data.acceletometer.acceleroMetersensor;
 import project.selfserv.storage.mongodb.AbstractMongoBolt;
-import project.selfserv.storage.mongodb.MongoDbManager;
 import project.selfserv.storage.mongodb.MongoMapper;
 
 /**
@@ -47,7 +48,7 @@ import project.selfserv.storage.mongodb.MongoMapper;
 public class MongoInsertBolt extends AbstractMongoBolt {
 
     private static final int DEFAULT_FLUSH_INTERVAL_SECS = 1;
-    private static final Logger LOG = LogManager.getLogger(MongoDbManager.class);
+    private static final Logger LOG = LogManager.getLogger(MongoInsertBolt.class);
 
     private MongoMapper mapper;
 
@@ -59,7 +60,7 @@ public class MongoInsertBolt extends AbstractMongoBolt {
 
     private int flushIntervalSecs = DEFAULT_FLUSH_INTERVAL_SECS;
     
-    private String[] fields = {"timestamp",
+    private String[] fields = { "timestamp",
 					            "CGM_Value",
 					            "HeartRatesensor_Value",
 					            "bodyTemperaturesensor_Value",
@@ -178,6 +179,11 @@ public class MongoInsertBolt extends AbstractMongoBolt {
 	    		  )
 	      .append("galvanicSkinRespsensor_Value", input.getFloatByField("galvanicSkinRespsensor_Value"));  
         return new Document(document);
+    }
+    
+    public boolean isConnected()
+    {
+    	return mongoClient.isConnected();
     }
 
 }

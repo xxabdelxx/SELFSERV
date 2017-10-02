@@ -1,5 +1,7 @@
 package project.selfserv.events;
+import org.kaaproject.examples.storm.storm.server.bolt.Algorithm;
 import org.kaaproject.examples.storm.storm.server.bolt.AvroSinkBolt;
+import org.kaaproject.kaa.client.event.FindEventListenersCallback;
 import org.kaaproject.kaa.client.DesktopKaaPlatformContext;
 import org.kaaproject.kaa.client.Kaa;
 import org.kaaproject.kaa.client.KaaClient;
@@ -9,15 +11,21 @@ import org.kaaproject.kaa.client.event.EventFamilyFactory;
 import org.kaaproject.kaa.client.event.registration.UserAttachCallback;
 import org.kaaproject.kaa.common.endpoint.gen.SyncResponseResultType;
 import org.kaaproject.kaa.common.endpoint.gen.UserAttachResponse;
-import project.selfserv.kaa.event.sampling.SamplingEvent;
-import project.selfserv.kaa.event.*;
+import project.selfserv.kaa.exchangeInfo.*;
+import project.selfserv.kaa.exchangeMessages.*;
+import project.selfserv.kaa.exchangeMessages.Request.Request;
+import project.selfserv.kaa.exchangeMessages.Response.Response;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import project.selfserv.configuration.ConfigManager;
 
 import java.io.IOException;
+import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
@@ -31,15 +39,17 @@ public class EventsManager {
     private static  String USER_ACCESS_TOKEN ;
 
     private KaaClient kaaClient;
-    private SelfServEventClassFamilly SamplingEventFamily;
+    private selfservExchangeInformationsEventClassFamily SamplingEventFamily;
 
     public static EventsManager EventsManagerInstance = new EventsManager();
+    List<String> FQNs = new LinkedList<>();
     
 	public EventsManager() {
 		// TODO Auto-generated constructor stub
 		KEYS_DIR 		  = ConfigManager.ConfigManagerInstance.getKEYS_DIR();
 		USER_ACCESS_TOKEN = ConfigManager.ConfigManagerInstance.getUSER_ACCESS_TOKEN();
 		USER_EXTERNAL_ID  = ConfigManager.ConfigManagerInstance.getUSER_EXTERNAL_ID();
+
 		
 	}
     /**
@@ -63,35 +73,55 @@ public class EventsManager {
             kaaClient = Kaa.newClient(desktopKaaPlatformContext, new SimpleKaaClientStateListener() {
                 @Override
                 public void onStarted() {
-                    LOG.info("####################### KAA CLIENT STARTED : OK #######################");
+                    LOG.info("### DEBUG ### ##KAA## -> STARTING KAA CLIENT... ##");
                     startupLatch.countDown();
                 }
 
                 @Override
                 public void onStopped() {
-                    LOG.info("####################### KAA CLIENT STOPED : OK #######################\"");
+                    LOG.info("### DEBUG ### ##KAA## -> STOPING KAA CLIENT... ##");
                 }
             }, true);
 
             //Start the Kaa client and connect it to the Kaa server.
             kaaClient.start();
-
+            LOG.info("### DEBUG ### ##KAA## -> KAA CLIENT STARTED ! ##");
             startupLatch.await();
             // EventUtil.sleepForSeconds(3);
 
             //Obtain the event family factory.
             final EventFamilyFactory eventFamilyFactory = kaaClient.getEventFamilyFactory();
             //Obtain the concrete event family.
-            SamplingEventFamily = eventFamilyFactory.getSelfServEventClassFamilly();
-
+            SamplingEventFamily = eventFamilyFactory.getselfservExchangeInformationsEventClassFamily();
+    	    FQNs.add(project.selfserv.kaa.exchangeMessages.Request.Request.class.getName());
+    	    FQNs.add(project.selfserv.kaa.exchangeMessages.Response.Response.class.getName());
+    	    kaaClient.findEventListeners(FQNs, new FindEventListenersCallback() {
+    	        @Override
+    	        public void onEventListenersReceived(List<String> eventListeners) {
+    	            
+    	        	LOG.info("### DEBUG ### ##KAA## -> EventListeners : "+Arrays.toString(eventListeners.toArray()));
+    	        }   
+    	        @Override
+    	        public void onRequestFailed() {
+    	        	LOG.info("### DEBUG ### ##KAA##-> EventListeners : FAILED");
+    	        }
+    	    });
             // Add event listeners to the family factory.
-           /* SamplingEventFamily.addListener(new SelfServEventClassFamilly.Listener() {
+               SamplingEventFamily.addListener(new selfservExchangeInformationsEventClassFamily.Listener() {
+				
 				@Override
-				public void onEvent(SamplingEvent event, String source) {
+				public void onEvent(Response event, String source) {
 					// TODO Auto-generated method stub
-					LOG.info("############## Message has been Recieved : "+event.getTimestamp()+" | "+event.getState());
+					LOG.info("### DEBUG ### ##KAA##-> Response event arrived from : "+source+" at "+event.getTimestamp() +" With message :  "+event.getMessage1());
 				}
-            });*/
+				
+				@Override
+				public void onEvent(Request event, String source) {
+					// TODO Auto-generated method stub
+					sendSamplingFreqToGateWay(getCurrentTime(),Algorithm.AlgorithmInstance.getGlucoseSimplingFrequency());
+					LOG.info("### DEBUG ### ##KAA##-> Request event arrived from : "+source+" at "+event.getTimestamp() +" With message :  "+event.getMessage1());
+				}
+			});
              // attach endpoint to user - only endpoints attached to the same user
             // can do events exchange among themselves
             attachToUser(USER_EXTERNAL_ID,USER_ACCESS_TOKEN);
@@ -119,13 +149,13 @@ public class EventsManager {
             kaaClient.attachUser(userId, userAccessToken, new UserAttachCallback() {
                 @Override
                 public void onAttachResult(UserAttachResponse response) {
-                    LOG.info("Attach to user result: {}", response.getResult());
+                    LOG.info("### DEBUG ### ##KAA## -> Attach to user result: {}", response.getResult());
                     if (response.getResult() == SyncResponseResultType.SUCCESS) {
-                        LOG.info("Current endpoint have been successfully attached to user [ID={}]!", userId);
+                        LOG.info("### DEBUG ### ##KAA## -> Current endpoint have been successfully attached to user [ID={}]!", userId);
                     } else {
-                        LOG.error("Attaching current endpoint to user [ID={}] FAILED.", userId);
-                        LOG.error("Attach response: {}", response);
-                        LOG.error("Events exchange will be NOT POSSIBLE.");
+                        LOG.error("### DEBUG ### ##KAA## -> Attaching current endpoint to user [ID={}] FAILED.", userId);
+                        LOG.error("### DEBUG ### ##KAA## -> Attach response: {}", response);
+                        LOG.error("### DEBUG ### ##KAA## -> Events exchange will be NOT POSSIBLE.");
                     }
                     attachLatch.countDown();
                 }
@@ -138,10 +168,26 @@ public class EventsManager {
         }
     }
     
-    public void sendEvent(long timesTamp , int state)
+    public static long getCurrentTime(){
+  		//get the current timestamp
+  		Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+  		return ((timestamp.getTime()/1000)+(timestamp.getTime()%1));
+  	}
+
+    /*public void sendEvent(long timesTamp , int state)
     {
-    	SamplingEventFamily.sendEventToAll(new SamplingEvent(timesTamp,state));
+    	//SamplingEventFamily.sendEventToAll(new SamplingEvent(timesTamp,state));
     	LOG.info("########################### EVENT SENT : OK ############################");
+    }*/
+    
+    /**
+     * @param timesTamp : long , time of sent 
+     * @param SamplingFreq : current sampling Frequency
+     */
+    public void sendSamplingFreqToGateWay(long timesTamp , int SamplingFreq)
+    {
+    	SamplingEventFamily.sendEventToAll(new Response(timesTamp,SamplingFreq));
+    	LOG.info("### DEBUG ### ##EVENT## -> Sampling Freq SENT : Timestamp : "+timesTamp+" and Freq : "+ SamplingFreq+" #####");
     }
 
     /**
@@ -149,6 +195,8 @@ public class EventsManager {
      */
     public void stop() {
         kaaClient.stop();
+        LOG.info("### DEBUG ### ##KAA## -> KAA CLIENT STOPED ! ##");
+        
     }
 
 

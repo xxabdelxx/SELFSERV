@@ -16,7 +16,6 @@ import project.selfserv.events.EventsManager;
 import project.selfserv.kaa.sensors.data.sensorsDataCollection;
 import project.selfserv.kaa.sensors.data.acceletometer.acceleroMetersensor;
 import project.selfserv.kaa.sensors.data.samples.samples;
-import project.selfserv.storage.mongodb.MongoDbManager;
 
 import org.kaaproject.kaa.client.event.FindEventListenersCallback;
 

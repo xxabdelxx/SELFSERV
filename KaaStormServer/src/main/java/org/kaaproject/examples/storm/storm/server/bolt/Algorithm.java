@@ -39,6 +39,7 @@ public class Algorithm implements IRichBolt {
 
     private static final Logger LOG = LoggerFactory.getLogger(Algorithm.class);
     public static final String DEFAULT_FLUME_PROPERTY_PREFIX = "flume-avro-forward";
+    public static Algorithm AlgorithmInstance = new Algorithm();
 
     private static final KaaFlumeEventReader<sensorsDataCollection> kaaReader = new KaaFlumeEventReader<sensorsDataCollection>(sensorsDataCollection.class);
     private AvroFlumeEventProducer producer;
@@ -65,7 +66,7 @@ public class Algorithm implements IRichBolt {
     //The maximum angle
     private static float ALPHA_MAX_ANGLE = -1.0F;
     //a threshold for the glucose value
-	private static final float THRESHOLD_GLUCOSE_VALUE = MIN_GlUCOMETER_THRESHOLD * 1.25F ;
+	private static float THRESHOLD_GLUCOSE_VALUE = 0 ;
 	//Max value for Each sensor
 	private HashMap<String,Float> MAX_SENSORS_VAL = new HashMap<String,Float>();
     /*************************************************************************************/
@@ -80,7 +81,7 @@ public class Algorithm implements IRichBolt {
     //The frequency for sampling the glucose sensor
     private int glucoseSimplingFrequency;
     private int F_SimplingFreq;
-    //private int 
+    private boolean firstTimeExecution = true; 
     /*************************************************************************************/
     
 	/*************************    Variable for sensors' Data  ****************************/
@@ -117,9 +118,18 @@ public class Algorithm implements IRichBolt {
 		glucoseSimplingFrequency 	= ConfigManager.ConfigManagerInstance.getSAMPLINGFREQUENCY();
 		//initializing the sampling Freq
 		F_SimplingFreq 				= glucoseSimplingFrequency;
+		THRESHOLD_GLUCOSE_VALUE = MIN_GlUCOMETER_THRESHOLD * 1.25F ;
 	}
     
-    public String getFlumePropertyPrefix() {
+    public int getGlucoseSimplingFrequency() {
+		return glucoseSimplingFrequency;
+	}
+
+	public int getF_SimplingFreq() {
+		return F_SimplingFreq;
+	}
+	
+	public String getFlumePropertyPrefix() {
         return DEFAULT_FLUME_PROPERTY_PREFIX;
     }
 
@@ -142,6 +152,9 @@ public class Algorithm implements IRichBolt {
     }
     
 
+    /* (non-Javadoc)
+     * @see backtype.storm.task.IBolt#execute(backtype.storm.tuple.Tuple)
+     */
     public void execute(Tuple input) {
         try 
         {
@@ -167,47 +180,69 @@ public class Algorithm implements IRichBolt {
 			//sensorsValues.put("",acceleroMetersensor_Value);
 			/*********************************************************************/
 			
+			/******************************* Debug  ******************************/
+			LOG.info("### DEBUG ### ######  BEFORE PROCESSING  ######");
+			LOG.info("### DEBUG ### -> glucoseSimplingFrequency     :  "+glucoseSimplingFrequency);
+			LOG.info("### DEBUG ### -> F_SimplingFreq               :  "+F_SimplingFreq);
+			LOG.info("### DEBUG ### -> Slop of curve m     :  "+m);
+			LOG.info("### DEBUG ### -> theta               :  "+(float)(theta + 360) % 360);
+			LOG.info("### DEBUG ### -> ALPHA               :  "+ (float)(ALPHA_MAX_ANGLE + 360) % 360);
+			LOG.info("### DEBUG ### -> estimatedTimeofHypo :  "+estimatedTimeofHypo);
+			LOG.info("### DEBUG ### -> glucosePrevValue    :  "+glucosePrevValue);
+			LOG.info("### DEBUG ### -> glucoseCurrValue    :  "+sensorsValues.get("CGM_Value"));
+			
+			/*********************************************************************/
+			
+			if(firstTimeExecution)
+			{
+				glucosePrevValue = sensorsValues.get("CGM_Value");
+				firstTimeExecution = false;
+			}
+				
+			
 			//if the algorithm enters the Case 2 where Theta >= Alpha
-			//it should enter another loop
+			//means it enters another loop
 			//the Storm architecture is by it self a loop iterations
+			//we can not put a loop into another loop ( execute() ) because 
+			//on every data recieved the function execute() rexecute the hol code on it.
+			//caseTwoReached if true : we focus the processing only on the Case 2 of the algorithm where >=  alpha.
 			if(caseTwoReached)
 			{
+				/* 
+				 * TO DO
+				 * Get real time from timestamp to calculate estimatedTimeOfHypo
+				 */
+				
 				LOG.info("### DEBUG ### -> CASE 2 - CONDITION : caseTwoReached");
 				m     = slopOfCurve( glucosePrevValue , sensorsValues.get("CGM_Value")  , glucoseSimplingFrequency);
 				theta = thetaAngle(m);
 				estimatedTimeofHypo = estimatedGlucoTakesMin0(glucosePrevValue,sensorsValues.get("CGM_Value"),glucoseSimplingFrequency,MIN_GlUCOMETER_THRESHOLD);
 				glucosePrevValue = sensorsValues.get("CGM_Value");
 				{    // * ** *** **** ***** Debug ***** **** *** ** *
+					LOG.info("### DEBUG ### -> ##### RECALCULATED #####");
 					LOG.info("### DEBUG ### -> Slop of curve m     :  "+m);
 					LOG.info("### DEBUG ### -> theta               :  "+theta);
 					LOG.info("### DEBUG ### -> estimatedTimeofHypo :  "+estimatedTimeofHypo);
 					LOG.info("### DEBUG ### -> glucosePrevValue    :  "+glucosePrevValue);
+					LOG.info("### DEBUG ### -> glucoseCurrValue    :  "+sensorsValues.get("CGM_Value"));
 				}
 				
-				if(theta + 360 >= ALPHA_MAX_ANGLE + 360 ) 
+				if((theta + 360) % 360 >= (ALPHA_MAX_ANGLE + 360) % 360 ) 
 				{
 					LOG.info("### DEBUG ### -> CASE 2 - CONDITION : theta > = ALPHA");
 					glucoseSimplingFrequency = F_SimplingFreq / 3;
-					{    // * ** *** **** ***** Debug ***** **** *** ** *
-						LOG.info("### DEBUG ### -> glucoseSimplingFrequency     :  "+glucoseSimplingFrequency);
-						LOG.info("### DEBUG ### -> Slop of curve m     :  "+m);
-						LOG.info("### DEBUG ### -> theta               :  "+theta);
-						LOG.info("### DEBUG ### -> glucosePrevValue    :  "+glucosePrevValue);
-						LOG.info("### DEBUG ### -> glucoseCurrValue    :  "+sensorsValues.get("CGM_Value"));
-					}
+					LOG.info("### DEBUG ### -> ##### RECALCULATED #####");
+					LOG.info("### DEBUG ### -> glucoseSimplingFrequency devided on 3    :  "+glucoseSimplingFrequency);
+					//Event should be sent here to change the Sampling frequency
 				}
 					
-				if(theta + 360 < ALPHA_MAX_ANGLE + 360 && m > 0) 
+				if((theta + 360) % 360  < (ALPHA_MAX_ANGLE + 360) % 360  && m > 0) 
 				{
 					LOG.info("### DEBUG ### -> CASE 2 - Risk Factor State -  CONDITION : theta < ALPHA && m > 0");
 					glucoseSimplingFrequency = F_SimplingFreq / 2;
-					{    // * ** *** **** ***** Debug ***** **** *** ** *
-						LOG.info("### DEBUG ### -> glucoseSimplingFrequency     :  "+glucoseSimplingFrequency);
-						LOG.info("### DEBUG ### -> Slop of curve m     :  "+m);
-						LOG.info("### DEBUG ### -> theta               :  "+theta);
-						LOG.info("### DEBUG ### -> glucosePrevValue    :  "+glucosePrevValue);
-						LOG.info("### DEBUG ### -> glucoseCurrValue    :  "+sensorsValues.get("CGM_Value"));
-					}
+					LOG.info("### DEBUG ### -> ##### RECALCULATED #####");
+					LOG.info("### DEBUG ### -> glucoseSimplingFrequency  devided on 2   :  "+glucoseSimplingFrequency);
+					//Event should be sent here to change the Sampling frequency
 				}
 				
 				if(m <= 0)
@@ -215,106 +250,95 @@ public class Algorithm implements IRichBolt {
 					LOG.info("### DEBUG ### -> CASE 2 - Stop Sampling Sensors -  CONDITION : m < = 0");	
 					F_SimplingFreq = glucoseSimplingFrequency;
 					caseTwoReached = false;
-					{    // * ** *** **** ***** Debug ***** **** *** ** *
-						LOG.info("### DEBUG ### -> glucoseSimplingFrequency  = F_SimplingFreq   :  "+glucoseSimplingFrequency);
-						LOG.info("### DEBUG ### -> Slop of curve m     :  "+m);
-						LOG.info("### DEBUG ### -> theta               :  "+theta);
-						LOG.info("### DEBUG ### -> glucosePrevValue    :  "+glucosePrevValue);
-						LOG.info("### DEBUG ### -> glucoseCurrValue    :  "+sensorsValues.get("CGM_Value"));
-					}
+					LOG.info("### DEBUG ### -> ##### RECALCULATED #####");
+					LOG.info("### DEBUG ### -> CaseTwoReached    :  "+caseTwoReached);
+					LOG.info("### DEBUG ### -> glucoseSimplingFrequency  = F_SimplingFreq   :  "+glucoseSimplingFrequency);
+					//EVENT Should be sent here to change the sampling frequency
 				}
 				
 				if(!compareIsSafe(sensorsValues, MAX_SENSORS_VAL))
 				{
-					LOG.info("#### CASE 2 : ! ALERT HYPOGLYCEMIA - CONDITION : compareIsSafe ####");
-					{    // * ** *** **** ***** Debug ***** **** *** ** *
-						LOG.info("### DEBUG ### -> Slop of curve m     :  "+m);
-						LOG.info("### DEBUG ### -> theta               :  "+theta + 360);
-						LOG.info("### DEBUG ### -> ALPHA               :  "+ALPHA_MAX_ANGLE + 360);
-						LOG.info("### DEBUG ### -> estimatedTimeofHypo :  "+estimatedTimeofHypo);
-						LOG.info("### DEBUG ### -> glucosePrevValue    :  "+glucosePrevValue);
-						LOG.info("### DEBUG ### -> glucoseCurrValue    :  "+sensorsValues.get("CGM_Value"));
-					}
+					LOG.info("#### CASE 2 : ! ALERT HYPOGLYCEMIA - CONDITION : Not compareIsSafe ####");
+					LOG.info("### DEBUG ### -> galvanicSkinRespsensor_Value : " + sensorsValues.get("galvanicSkinRespsensor_Value") + " and " + MAX_SENSORS_VAL.get("MAX_GSR")        + " as MAX");
+					LOG.info("### DEBUG ### -> heartRatesensor_Value : "        + sensorsValues.get("heartRatesensor_Value")        + " and " + MAX_SENSORS_VAL.get("MAX_HEARTRATE")  + " as MAX");
+					LOG.info("### DEBUG ### -> bodyTemperaturesensor_Value : "  + sensorsValues.get("bodyTemperaturesensor_Value")  + " and " + MAX_SENSORS_VAL.get("MAX_TEMPERATURE")+ " as MAX");
+					
+					//EVENT should be sent here to alert the user and the community
 				}
 			}
 			else
 			{
-				//glucoseValue is G as initial value = 0.
-				if(glucosePrevValue == 0.0F)
-				{
-					//sensorsValues(0) is CGM value
-					glucosePrevValue = sensorsValues.get("CGM_Value");
+				//glucoseValue is G as initial value = 0
+				// Previous value of Glucose already initialized into the constructor.
+
+				//The algorithm now have two values of Glucose
+				//Previous Value G and current value sensorsValues.get("CGM_Value");
+
+				//--------------- Previous Value -- New Value of Glucose -- Sampling Freq
+				m     = slopOfCurve( glucosePrevValue , sensorsValues.get("CGM_Value")  , glucoseSimplingFrequency);
+				theta = thetaAngle(m);
+				estimatedTimeofHypo = estimatedGlucoTakesMin0(glucosePrevValue,sensorsValues.get("CGM_Value"),glucoseSimplingFrequency,MIN_GlUCOMETER_THRESHOLD);
+				glucosePrevValue = sensorsValues.get("CGM_Value");
+				LOG.info("### DEBUG ### -> CONDITION : glucosePrevValue != 0.0F");	
+				{    // * ** *** **** ***** Debug ***** **** *** ** *
+					LOG.info("### DEBUG ### -> ##### RECALCULATED #####");
+					LOG.info("### DEBUG ### -> Slop of curve m     :  "+m);
+					LOG.info("### DEBUG ### -> theta               :  "+ (float)(theta +360) % 360);
+					LOG.info("### DEBUG ### -> estimatedTimeofHypo :  "+estimatedTimeofHypo);
+					LOG.info("### DEBUG ### -> glucosePrevValue    :  "+glucosePrevValue);
 				}
-				//The algorithm now have two values of Glucuse
-				//Previous Value G and current value sensorsValues.get(0);
-				else
-				{	
-					//--------------- Previous Value -- New Value of Glucose -- Sampling Freq
-					m     = slopOfCurve( glucosePrevValue , sensorsValues.get("CGM_Value")  , glucoseSimplingFrequency);
-					theta = thetaAngle(m);
-					estimatedTimeofHypo = estimatedGlucoTakesMin0(glucosePrevValue,sensorsValues.get("CGM_Value"),glucoseSimplingFrequency,MIN_GlUCOMETER_THRESHOLD);
-					glucosePrevValue = sensorsValues.get("CGM_Value");
-					
+
+				//case 1 where Theta < alpha and CGM reached the THRESHOLD
+				//we add 360 to compare positive values of the two angles
+				//if we compare the nagative values , the logic will be false
+				if((theta + 360) % 360 < (ALPHA_MAX_ANGLE + 360) % 360 && sensorsValues.get("CGM_Value") < THRESHOLD_GLUCOSE_VALUE)
+				{
+					LOG.info("#### CASE 1 : LOW GLUCOSE - CONDITION : theta + 360 < ALPHA_MAX_ANGLE + 360 && sensorsValues.get(\"CGM_Value\") < THRESHOLD_GLUCOSE_VALUE ####");
 					{    // * ** *** **** ***** Debug ***** **** *** ** *
+						LOG.info("### DEBUG ### -> ##### RECALCULATED #####");
 						LOG.info("### DEBUG ### -> Slop of curve m     :  "+m);
-						LOG.info("### DEBUG ### -> theta               :  "+theta);
+						LOG.info("### DEBUG ### -> theta               :  "+ (float)(theta +360) % 360);
+						LOG.info("### DEBUG ### -> ALPHA               :  "+ (float)(ALPHA_MAX_ANGLE + 360) % 360);
 						LOG.info("### DEBUG ### -> estimatedTimeofHypo :  "+estimatedTimeofHypo);
 						LOG.info("### DEBUG ### -> glucosePrevValue    :  "+glucosePrevValue);
+						LOG.info("### DEBUG ### -> glucoseCurrValue    :  "+sensorsValues.get("CGM_Value"));
 					}
-	
-					//case 1 where Theta < alpha and CGM reached the THRESHOLD
-					//we add 360 to compare positive values of the two angles
-					//if we compare the nagative values , the logic will be false
-					if(theta + 360 < ALPHA_MAX_ANGLE + 360 && sensorsValues.get("CGM_Value") < THRESHOLD_GLUCOSE_VALUE)
+					
+					LOG.info("#### CASE 1 : COMPARING SENSORS VALUES WITH MAX VALUES TOLERATED ... ####");
+					//initiate the sampling of the other Sensors
+					//we have already the values of other sensors
+					//if compareIsSafe returns true that means the patient is safe 
+					//and no vital sign is under or above the normal ( i.e : max min Vals)
+					if(!compareIsSafe(sensorsValues, MAX_SENSORS_VAL) || sensorsValues.get("CGM_Value") < MIN_GlUCOMETER_THRESHOLD)
 					{
-						LOG.info("#### CASE 1 : LOW GLUCOSE ####");
+						LOG.info("#### CASE 1 : LOW GLUCOSE ! ALERT HYPOGLYCEMIA - CONDITION : not compareIsSafe ####");
 						{    // * ** *** **** ***** Debug ***** **** *** ** *
-							LOG.info("### DEBUG ### -> Slop of curve m     :  "+m);
-							LOG.info("### DEBUG ### -> theta               :  "+theta);
-							LOG.info("### DEBUG ### -> ALPHA               :  "+ALPHA_MAX_ANGLE);
-							LOG.info("### DEBUG ### -> estimatedTimeofHypo :  "+estimatedTimeofHypo);
-							LOG.info("### DEBUG ### -> glucosePrevValue    :  "+glucosePrevValue);
-							LOG.info("### DEBUG ### -> glucoseCurrValue    :  "+sensorsValues.get("CGM_Value"));
+							LOG.info("### DEBUG ### -> ##### RECALCULATED #####");
+							LOG.info("### DEBUG ### -> galvanicSkinRespsensor_Value : " + sensorsValues.get("galvanicSkinRespsensor_Value") + " and " + MAX_SENSORS_VAL.get("MAX_GSR")        + " as MAX");
+							LOG.info("### DEBUG ### -> heartRatesensor_Value : "        + sensorsValues.get("heartRatesensor_Value")        + " and " + MAX_SENSORS_VAL.get("MAX_HEARTRATE")  + " as MAX");
+							LOG.info("### DEBUG ### -> bodyTemperaturesensor_Value : "  + sensorsValues.get("bodyTemperaturesensor_Value")  + " and " + MAX_SENSORS_VAL.get("MAX_TEMPERATURE")+ " as MAX");
 						}
-						
-						LOG.info("#### CASE 1 : COMPARING SENSORS VALUES WITH MAX VALUES ALLOWED ... ####");
-						//initiate the sampling of the other Sensors
-						//we have already the values of other sensors
-						//if compareIsSafe returns true that means the patient is safe 
-						//and no vital sign is under the or above the normal ( i.e : max min Vals)
-						if(!compareIsSafe(sensorsValues, MAX_SENSORS_VAL))
-						{
-							LOG.info("#### CASE 1 : LOW GLUCOSE ! ALERT HYPOGLYCEMIA ####");
-							{    // * ** *** **** ***** Debug ***** **** *** ** *
-								LOG.info("### DEBUG ### -> Slop of curve m     :  "+m);
-								LOG.info("### DEBUG ### -> theta               :  "+theta + 360);
-								LOG.info("### DEBUG ### -> ALPHA               :  "+ALPHA_MAX_ANGLE + 360);
-								LOG.info("### DEBUG ### -> estimatedTimeofHypo :  "+estimatedTimeofHypo);
-								LOG.info("### DEBUG ### -> glucosePrevValue    :  "+glucosePrevValue);
-								LOG.info("### DEBUG ### -> glucoseCurrValue    :  "+sensorsValues.get("CGM_Value"));
-							}
-						}
-					}
-					//case 0 where Theta < Alpha means normal state
-					else if(theta +360 < ALPHA_MAX_ANGLE + 360)
-					{
-						LOG.info("#### CASE 0 : NORMAL STATE ####");
-						{    // * ** *** **** ***** Debug ***** **** *** ** *
-							LOG.info("### DEBUG ### -> Slop of curve m     :  "+m);
-							LOG.info("### DEBUG ### -> theta               :  "+theta);
-							LOG.info("### DEBUG ### -> ALPHA               :  "+ALPHA_MAX_ANGLE);
-							LOG.info("### DEBUG ### -> estimatedTimeofHypo :  "+estimatedTimeofHypo);
-							LOG.info("### DEBUG ### -> glucosePrevValue    :  "+glucosePrevValue);
-							LOG.info("### DEBUG ### -> glucoseCurrValue    :  "+sensorsValues.get("CGM_Value"));
-						}
-					}
-					else if(theta + 360 >= ALPHA_MAX_ANGLE + 360)
-					{
-						//Pre-Hypoglycemia State
-						glucoseSimplingFrequency = F_SimplingFreq / 3;
-						caseTwoReached = true;
 					}
 				}
+				//case 0 where Theta < Alpha means normal state
+				else if((theta +360 ) %360 < (ALPHA_MAX_ANGLE + 360 ) %360)
+				{
+					LOG.info("#### CASE 0 : NORMAL STATE -CONDITON : theta +360 < ALPHA_MAX_ANGLE + 360####");
+					LOG.info("### DEBUG ### -> theta               :  "+theta);
+					LOG.info("### DEBUG ### -> ALPHA               :  "+ (float)(ALPHA_MAX_ANGLE + 360) % 360);
+				}
+				else if( (theta + 360 ) % 360 >= (ALPHA_MAX_ANGLE + 360 ) % 360)
+				{
+					//Pre-Hypoglycemia State
+					glucoseSimplingFrequency = F_SimplingFreq / 3;
+					caseTwoReached = true;
+					LOG.info("#### ENTERING CASE TWO OF  pre-Hypoglycemia State ####");
+					LOG.info("#### CASE 2 : REACHED  ,NEXT ITERATION WILL BE PROCESSED IN CASE 2 #### : caseTwoReached = true");
+					LOG.info("### DEBUG ### -> glucoseSimplingFrequency     :  "+glucoseSimplingFrequency);
+					LOG.info("### DEBUG ### -> F_SimplingFreq               :  "+F_SimplingFreq);
+					//event should be sent here to change the sampling rate
+				}
+				
 			}            
             //All seems to be nice, notify storm.spout about it
             this.collector.ack(input);

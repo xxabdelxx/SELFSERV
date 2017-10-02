@@ -111,4 +111,8 @@ public class MongoDbClient {
 		collection.insertOne(document);
 	}
 
+	public boolean isConnected()
+	{
+		return client.getDatabase("selfservdb") == null;
+	}
 }

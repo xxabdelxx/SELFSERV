@@ -28,7 +28,7 @@
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="lib" path="C:/Users/q$/Desktop/SELFSERV/Version_2/project.selfserv.kaa.sensors.data.sensorsDataCollection.v1.jar"/>
-	<classpathentry kind="lib" path="lib/kaa-java-ep-sdk-XZOzzqrwvHD1jk4YvnRY6CD1Igo_EVENT.jar"/>
 	<classpathentry kind="lib" path="lib/mongo-java-driver-3.4.3.jar"/>
+	<classpathentry kind="lib" path="lib/kaa-java-ep-sdk-sN07R9Id0b_GbgdJPDiqdUdF7Fs.jar"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>

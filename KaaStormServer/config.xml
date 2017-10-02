@@ -7,18 +7,18 @@
    </kaaconfig>
    
    <mongoconfig>
-      <url>mongodb://192.168.100.210:27017/selfservdb</url>
+      <url>mongodb://192.168.137.210:27017/selfservdb</url>
       <collectionName>Monitoring</collectionName>
    </mongoconfig>
 
    <algorithmconfig>
       <SAMPLINGFREQUENCY>300</SAMPLINGFREQUENCY>
-      <ALPHA_MAX_ANGLE>-1.0</ALPHA_MAX_ANGLE>
-      <MIN_GlUCOMETER_THRESHOLD>70.0</MIN_GlUCOMETER_THRESHOLD>
-      <MAX_CGM>0</MAX_CGM>
-      <MAX_HEARTRATE>0</MAX_HEARTRATE>
-      <MAX_TEMPERATURE>0</MAX_TEMPERATURE>
+      <ALPHA_MAX_ANGLE>-1</ALPHA_MAX_ANGLE>
+      <MIN_GlUCOMETER_THRESHOLD>70</MIN_GlUCOMETER_THRESHOLD>
+      <MAX_CGM>10</MAX_CGM>
+      <MAX_HEARTRATE>120</MAX_HEARTRATE>
+      <MAX_TEMPERATURE>39</MAX_TEMPERATURE>
       <MAX_ACCELEROMETER>0</MAX_ACCELEROMETER>
-      <MAX_GSR>0</MAX_GSR>
+      <MAX_GSR>10</MAX_GSR>
    </algorithmconfig>
 </configuration>
